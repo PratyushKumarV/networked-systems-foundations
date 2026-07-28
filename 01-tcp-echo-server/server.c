@@ -74,46 +74,56 @@ int main(){
         return 1;
     }
 
-    // Kernel populates client_addr and updates client_len upon accepting connection
-    socklen_t client_len=sizeof(client_addr);   
-    int connfd=accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
-    if (connfd==-1){
-        perror("Error accepting connection!");
-        close(sockfd);
-        return 1;
-    }
-
-    // INET_ADDRSTRLEN is 16 bytes
-    char client_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-
-    printf("Connection to %s:%d succeeded!\n", client_ip, ntohs(client_addr.sin_port));
-
-    char buffer[1024];
-    ssize_t bytes_read; // ssize_t is signed size, this is because the read function can return -1 on error
-
-    // read() blocks the process (sleep state) until the kernel's receive queue gets data from NIC interrupts.
-    // Returns bytes read into user space, 0 on client FIN (EOF), or -1 on error.
-    while((bytes_read=read(connfd, buffer, sizeof(buffer)))>0){
-
-        // Copies payload bytes back into the kernel's send queue to transmit back over TCP
-        if(write(connfd, buffer, bytes_read)==-1){
-            perror("Error writing to client!");
-            break;
+    // Keep accpeting new client connections (sequentially, one client connection after another)
+    while(1){
+        // Kernel populates client_addr and updates client_len upon accepting connection
+        socklen_t client_len=sizeof(client_addr);   
+        int connfd=accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
+        if (connfd==-1){
+            perror("Error accepting connection!");
+            continue;
         }
-    }
 
-    // bytes_read == 0 implies graceful client disconnect (TCP FIN received)
-    if (bytes_read==-1){
-        fprintf(stderr, "Connection reset / read error from %s:%d\n", client_ip, ntohs(client_addr.sin_port));
+        // INET_ADDRSTRLEN is 16 bytes
+        char client_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
+
+        printf("Connection to %s:%d succeeded!\n", client_ip, ntohs(client_addr.sin_port));
+
+        char buffer[1024];
+        ssize_t bytes_read; // ssize_t is signed size, this is because the read function can return -1 on error
+
+        // read() blocks the process (sleep state) until the kernel's receive queue gets data from NIC interrupts.
+        // Returns bytes read into user space, 0 on client FIN (EOF), or -1 on error.
+        int write_flag=0;
+        while((bytes_read=read(connfd, buffer, sizeof(buffer)))>0){
+
+            // Copies payload bytes back into the kernel's send queue to transmit back over TCP
+            if(write(connfd, buffer, bytes_read)==-1){
+                perror("Error writing to client!");
+                close(connfd);
+                write_flag=1;
+                break;
+            }
+        }
+
+        if (write_flag){
+            continue;
+        }
+
+        // bytes_read == 0 implies graceful client disconnect (TCP FIN received)
+        if (bytes_read==-1){
+            fprintf(stderr, "Connection reset / read error from %s:%d\n", client_ip, ntohs(client_addr.sin_port));
+            close(connfd);  // kernel sends a FIN to the client to close the connection
+            continue;
+        }
+
+        printf("Client %s:%d disconnected gracefully.\n", client_ip, ntohs(client_addr.sin_port));
+
         close(connfd);  // kernel sends a FIN to the client to close the connection
-        close(sockfd);  // releases port 8080 back to the kernel
-        return 1;
     }
 
-    printf("Client %s:%d disconnected gracefully.\n", client_ip, ntohs(client_addr.sin_port));
-
-    close(connfd);  // kernel sends a FIN to the client to close the connection
+    
     close(sockfd);  // releases port 8080 back to the kernel
 
     return 0;
