@@ -124,7 +124,7 @@ int main(){
     }
 
     
-    close(sockfd);  // releases port 8080 back to the kernel
+    close(sockfd);  // releases port 8080 back to the kernel. This code is unreachable now, as there is an infinite loop always accepting new connections, this process will have to be stopped using Ctrl+C.
 
     return 0;
 }

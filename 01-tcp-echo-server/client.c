@@ -35,10 +35,11 @@ int main(){
 
     while(1){
         printf("Enter message to echo (type 'exit' to quit): ");
-        fflush(stdout);
+        fflush(stdout); // immediatley prints the contents of printf to the terminal
 
         // reads till a newline character is encountered
         if(fgets(send_buffer, sizeof(send_buffer), stdin)==NULL){ // handles Ctrl+D (EOF)
+            close(clientfd);
             break;
         } 
 
@@ -51,11 +52,19 @@ int main(){
         }
 
         // send string to server
-        write(clientfd, send_buffer, strlen(send_buffer));
+        if(write(clientfd, send_buffer, strlen(send_buffer))==-1){
+            perror("Error writing to server!");
+            close(clientfd);
+            break;
+        }
+
         memset(recv_buffer, 0, sizeof(recv_buffer));
 
-        int bytes_read=read(clientfd, recv_buffer, sizeof(recv_buffer)-1); // sizeof(recv_buffer)-1 for accomodating one \n character
-        if(bytes_read<=0){
+        int bytes_read=read(clientfd, recv_buffer, sizeof(recv_buffer)-1); // sizeof(recv_buffer)-1 for accomodating one \0 character
+
+        if (bytes_read>0){
+            recv_buffer[bytes_read]='\0';
+        }else if(bytes_read<=0){
             if(bytes_read==0){
                 printf("Server closed the connection.\n");
             }else{
@@ -63,7 +72,6 @@ int main(){
             }
             close(clientfd);
             break;
-            
         }
 
         printf("Server Echo: %s\n", recv_buffer);
