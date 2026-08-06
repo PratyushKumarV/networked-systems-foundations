@@ -48,7 +48,15 @@ Type `exit` in the client to disconnect cleanly, or Ctrl+D for EOF, or Ctrl+C on
 
 ## How it works
 
-**Socket setup:** `socket()` creates an endpoint using `SOCK_STREAM` (TCP). `SO_REUSEADDR` is set so the server can restart immediately without hitting `EADDRINUSE` from a lingering `TIME_WAIT` socket from a previous run.
+The core pipeline is `socket → bind → listen → accept`, with `setsockopt` inserted as a practical aside between `socket` and `bind` — not conceptually one of the four fundamental steps of the client-server model, but a necessary real-world adjustment before binding:
+
+```
+socket()  →  (setsockopt — aside)  →  bind()  →  listen()  →  accept()
+```
+
+**Socket setup:** `socket()` creates an endpoint using `SOCK_STREAM` (TCP).
+
+**Aside — `setsockopt`:** `SO_REUSEADDR` is set here, before `bind()`, so the server can restart immediately without hitting `EADDRINUSE` from a lingering `TIME_WAIT` socket from a previous run. This step exists purely for practical convenience during development/restarts — it doesn't participate in the conceptual client-server flow the way the other four calls do.
 
 **Binding:** `bind()` attaches the socket to a specific local *address* — not just a port, but the IP + port pair together, which is exactly why `sockaddr_in` carries both `sin_addr` and `sin_port`. `INADDR_ANY` means "accept connections arriving on any local interface."
 

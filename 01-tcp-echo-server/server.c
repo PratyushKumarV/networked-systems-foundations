@@ -100,25 +100,20 @@ int main(){
 
             // Copies payload bytes back into the kernel's send queue to transmit back over TCP
             if(write(connfd, buffer, bytes_read)==-1){
-                perror("Error writing to client!");
-                close(connfd);
                 write_flag=1;
                 break;
             }
         }
 
         if (write_flag){
-            continue;
+            perror("Error writing to client!");
         }
-
         // bytes_read == 0 implies graceful client disconnect (TCP FIN received)
-        if (bytes_read==-1){
+        else if (bytes_read==-1){
             fprintf(stderr, "Connection reset / read error from %s:%d\n", client_ip, ntohs(client_addr.sin_port));
-            close(connfd);  // kernel sends a FIN to the client to close the connection
-            continue;
+        } else{
+            printf("Client %s:%d disconnected gracefully.\n", client_ip, ntohs(client_addr.sin_port));
         }
-
-        printf("Client %s:%d disconnected gracefully.\n", client_ip, ntohs(client_addr.sin_port));
 
         close(connfd);  // kernel sends a FIN to the client to close the connection
     }
