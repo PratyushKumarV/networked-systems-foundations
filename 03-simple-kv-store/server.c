@@ -16,6 +16,7 @@ typedef struct{
 }node;
 
 unsigned long hash(char *str);
+void process(char *input, node **arr, int connfd);
 
 const int PORT=8080;
 
@@ -53,6 +54,13 @@ int main(){
         return 1;
     }
 
+    // initialize the hash map in memory (as an array of node pointers)
+    node **arr=(node**)malloc(sizeof(node*)*SIZE);
+    for(int i=0;i<SIZE;i++){
+        arr[i]=NULL;
+    }
+    
+
     while(1){
         int connfd;
         socklen_t client_len=sizeof(client_addr);
@@ -66,8 +74,8 @@ int main(){
         ssize_t bytes_read;
         
         while((bytes_read=read(connfd, buff, sizeof(buff)-1))>0){
-
-            
+            buff[bytes_read]='\0';
+            process(buff, arr, connfd);
         }
 
 
@@ -79,7 +87,89 @@ int main(){
 
 unsigned long hash(char *str){
     unsigned long h=5381;
-    for(int i=0;i<=strlen(str);i++){
+    for(int i=0;i<strlen(str);i++){
+        h=((h<<5)+h) + str[i];
+    }
+    return h;
+}
+
+void process(char *input, node **arr, int connfd){
+    char *delims=" \n";
+
+    char *token=strtok(input, delims); 
+    char *key=strtok(NULL, delims); // Extract key
+    char *value=strtok(NULL, delims); // Extract value (If value not given then it remains NULL)
+
+    unsigned long h=hash(key);
+
+    int index=h%SIZE;
+
+    // convert method name to upper case
+    for(int i=0;i<strlen(token);i++){
+        token[i]=toupper(token[i]);
+    }
+
+    if (strcmp(token, "SET")==0){
+        node *new=(node*)malloc(sizeof(node));
+        new->key=key;
+        new->value=value;
+        new->next=NULL;
+
+        if(arr[index]==NULL){ // if there is no node present in the index
+            arr[index]=new;
+        }else{ // if there is already a node/chain present in the index
+            node *curr=arr[index];
+            while(curr->next!=NULL){
+                curr=curr->next;
+            }
+            curr->next=new;
+        }
+
+        if(write(connfd, "OK\n", strlen("OK\n"))==-1){
+            fprintf(stderr, "Failed to write response to client");
+        }
+
+    }else if(strcmp(token, "GET")==0){
+        node *curr=arr[index];
+        while(curr!=NULL && curr->key!=key){
+            curr=curr->next;
+        }
+
+        if(curr==NULL){
+            // write back to client
+            if(write(connfd, "NOT FOUND\n", sizeof("NOT FOUND\n"))==-1){
+                fprintf(stderr, "Failed to write to client");
+            }
+        }else{
+            // write back to client
+            char buff[1024];
+            int len=snprintf(buff, sizeof(buff), "VALUE %s\n", curr->value);
+            if(write(connfd, buff, len)==-1){
+                fprintf(stderr, "Failed to write to client");
+            }
+        }
+        
+    }else if(strcmp(token, "DEL")==0){
+        node *curr=arr[index], *prev=NULL;
+        while(curr!=NULL && curr->key!=key){
+            prev=curr;
+            curr=curr->next;
+        }
+
+        if(curr==NULL){
+            // write back to client
+            if(write(connfd, "NOT FOUND\n", sizeof("NOT FOUND\n"))==-1){
+                fprintf(stderr, "Failed to write to client");
+            }
+        }else{
+            prev->next=curr->next;
+            free(curr);
+            // write back to client
+            if(write(connfd, "DELETED\n", sizeof("DELETED\n"))==-1){
+                fprintf(stderr, "Failed to write to client");
+            }
+        }
         
     }
+
 }
