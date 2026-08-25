@@ -6,13 +6,14 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <ctype.h>
 
 #define SIZE 1031
 
-typedef struct{
+typedef struct node{
     char *key;
     char *value;
-    node *next;
+    struct node *next;
 }node;
 
 unsigned long hash(char *str);
@@ -81,13 +82,14 @@ int main(){
 
     }
     close(sockfd);
+    free(arr);
 
     return 0;
 }
 
 unsigned long hash(char *str){
     unsigned long h=5381;
-    for(int i=0;i<strlen(str);i++){
+    for(size_t i=0;i<strlen(str);i++){
         h=((h<<5)+h) + str[i];
     }
     return h;
@@ -105,14 +107,14 @@ void process(char *input, node **arr, int connfd){
     int index=h%SIZE;
 
     // convert method name to upper case
-    for(int i=0;i<strlen(token);i++){
+    for(size_t i=0;i<strlen(token);i++){
         token[i]=toupper(token[i]);
     }
 
     if (strcmp(token, "SET")==0){
         node *new=(node*)malloc(sizeof(node));
-        new->key=key;
-        new->value=value;
+        new->key=strdup(key);  // strdup is used so that actual memory is allocated for key and is stored in arr. If strdup is not used then the key assigned locally (within process) is used which is teared down when the process function returns. Using strdup, it internally allocates memory for the string, copies the contents of the string and returns a pointer to the newly allocated memory block.
+        new->value=strdup(value); // same reasoning as above
         new->next=NULL;
 
         if(arr[index]==NULL){ // if there is no node present in the index
@@ -131,7 +133,7 @@ void process(char *input, node **arr, int connfd){
 
     }else if(strcmp(token, "GET")==0){
         node *curr=arr[index];
-        while(curr!=NULL && curr->key!=key){
+        while(curr!=NULL && strcmp(curr->key, key)!=0){
             curr=curr->next;
         }
 
@@ -143,15 +145,15 @@ void process(char *input, node **arr, int connfd){
         }else{
             // write back to client
             char buff[1024];
-            int len=snprintf(buff, sizeof(buff), "VALUE %s\n", curr->value);
-            if(write(connfd, buff, len)==-1){
+            int len=snprintf(buff, sizeof(buff), "VALUE %s\n", curr->value); // used to write a formatted string to a buffer (up to sizeof(buff)-1, one char reserved for '\0'), returns the length of the formatted string (excluding '\0')
+            if(write(connfd, buff, len)==-1){ // writes back only the length of the formatted string, not the entire buffer.
                 fprintf(stderr, "Failed to write to client");
             }
         }
         
     }else if(strcmp(token, "DEL")==0){
         node *curr=arr[index], *prev=NULL;
-        while(curr!=NULL && curr->key!=key){
+        while(curr!=NULL && strcmp(curr->key, key)!=0){
             prev=curr;
             curr=curr->next;
         }
@@ -161,9 +163,22 @@ void process(char *input, node **arr, int connfd){
             if(write(connfd, "NOT FOUND\n", sizeof("NOT FOUND\n"))==-1){
                 fprintf(stderr, "Failed to write to client");
             }
+        }else if(prev==NULL && curr!=NULL){ // we have to delete the head of the chain (curr is head)
+            arr[index]=curr->next;
+            free(curr->key);
+            free(curr->value);
+            free(curr);
+
+            // write back to client
+            if(write(connfd, "DELETED\n", sizeof("DELETED\n"))==-1){
+                fprintf(stderr, "Failed to write to client");
+            }
         }else{
             prev->next=curr->next;
+            free(curr->key); 
+            free(curr->value); // free the memory allocated using strdup for both key and value before freeing the memory for the node
             free(curr);
+            
             // write back to client
             if(write(connfd, "DELETED\n", sizeof("DELETED\n"))==-1){
                 fprintf(stderr, "Failed to write to client");

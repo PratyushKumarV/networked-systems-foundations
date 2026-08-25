@@ -2,6 +2,14 @@
 01-tcp-echo-server/client
 01-tcp-echo-server/server
 
+# 02-concurrent-echo-server
+02-concurrent-echo-server/client
+02-concurrent-echo-server/server
+
+# 03-simple-kv-store
+03-simple-kv-store/client
+03-simple-kv-store/server
+
 # Compiled object files
 *.o
 
