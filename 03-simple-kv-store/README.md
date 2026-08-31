@@ -54,7 +54,7 @@ Newline-delimited, space-separated, case-insensitive command names:
 
 ## How it works
 
-**Storage:** an array of `SIZE` (1031) bucket heads, each a singly-linked list of `{key, value}` nodes — classic separate chaining. 1031 is prime, which spreads hash values more evenly across buckets than a round number would.
+**Storage:** an array of SIZE (1031) bucket heads, each a singly-linked list of {key, value} nodes — classic separate chaining. 1031 is prime, which spreads hash values more evenly across buckets than a round number would. SET traverses the chain first to update existing keys in place—freeing the previous value allocation—rather than appending duplicate nodes.
 
 **Hashing:** djb2 — seed at `5381`, then for each character, `hash = hash*33 + character`, letting the multiplication overflow naturally. This is intentional, not a bug: the running hash is stored in a fixed-width unsigned integer, and as more characters get folded in across a long string, the true mathematical value grows far past what that type can hold. In C, unsigned overflow wraps around predictably rather than being undefined behavior — that wraparound is what keeps the hash bounded while still scrambling bits unpredictably as the string is consumed. The bucket index is `hash % SIZE`.
 

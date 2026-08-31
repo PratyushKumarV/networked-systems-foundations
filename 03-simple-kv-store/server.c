@@ -138,10 +138,18 @@ void process(char *input, node **arr, int connfd){
             arr[index]=new;
         }else{ // if there is already a node/chain present in the index
             node *curr=arr[index];
-            while(curr->next!=NULL){
+            while(strcmp(curr->key, key)!=0 && curr->next!=NULL){
                 curr=curr->next;
             }
-            curr->next=new;
+            if(strcmp(curr->key, key)==0){
+                free(curr->value);
+                curr->value=new->value;
+                free(new->key);
+                free(new);
+            }else{
+                curr->next=new;
+            }
+            
         }
 
         if(write(connfd, "OK\n", strlen("OK\n"))==-1){
