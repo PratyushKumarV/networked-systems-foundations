@@ -2,15 +2,12 @@ CC=gcc
 
 CFLAGS=-Wall -Wextra -g -pthread
 
-all : server client
+all : server
 
 server : server.c
 	$(CC) $(CFLAGS) -o server server.c
 
-client : client.c
-	$(CC) $(CFLAGS) -o client client.c
-
 clean :
-	rm -f server client
+	rm -f server
 
 .PHONY : all clean 

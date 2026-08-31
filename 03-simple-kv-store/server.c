@@ -79,6 +79,8 @@ int main(){
             process(buff, arr, connfd);
         }
 
+        close(connfd);
+
 
     }
     close(sockfd);
@@ -102,6 +104,13 @@ void process(char *input, node **arr, int connfd){
     char *key=strtok(NULL, delims); // Extract key
     char *value=strtok(NULL, delims); // Extract value (If value not given then it remains NULL)
 
+    if(key==NULL){
+        if(write(connfd, "NO KEY PROVIDED\n", strlen("NO KEY PROVIDED\n"))==-1){
+            fprintf(stderr, "Failed to write to client");
+        }
+        return;
+    }
+
     unsigned long h=hash(key);
 
     int index=h%SIZE;
@@ -112,6 +121,14 @@ void process(char *input, node **arr, int connfd){
     }
 
     if (strcmp(token, "SET")==0){
+
+        if(value==NULL){
+            if(write(connfd, "NO VALUE PROVIDED\n", strlen("NO VALUE PROVIDED\n"))==-1){
+                fprintf(stderr, "Failed to write to client");
+            }
+            return;
+        }
+
         node *new=(node*)malloc(sizeof(node));
         new->key=strdup(key);  // strdup is used so that actual memory is allocated for key and is stored in arr. If strdup is not used then the key assigned locally (within process) is used which is teared down when the process function returns. Using strdup, it internally allocates memory for the string, copies the contents of the string and returns a pointer to the newly allocated memory block.
         new->value=strdup(value); // same reasoning as above
@@ -139,7 +156,7 @@ void process(char *input, node **arr, int connfd){
 
         if(curr==NULL){
             // write back to client
-            if(write(connfd, "NOT FOUND\n", sizeof("NOT FOUND\n"))==-1){
+            if(write(connfd, "NOT FOUND\n", strlen("NOT FOUND\n"))==-1){
                 fprintf(stderr, "Failed to write to client");
             }
         }else{
@@ -160,7 +177,7 @@ void process(char *input, node **arr, int connfd){
 
         if(curr==NULL){
             // write back to client
-            if(write(connfd, "NOT FOUND\n", sizeof("NOT FOUND\n"))==-1){
+            if(write(connfd, "NOT FOUND\n", strlen("NOT FOUND\n"))==-1){
                 fprintf(stderr, "Failed to write to client");
             }
         }else if(prev==NULL && curr!=NULL){ // we have to delete the head of the chain (curr is head)
@@ -170,7 +187,7 @@ void process(char *input, node **arr, int connfd){
             free(curr);
 
             // write back to client
-            if(write(connfd, "DELETED\n", sizeof("DELETED\n"))==-1){
+            if(write(connfd, "DELETED\n", strlen("DELETED\n"))==-1){
                 fprintf(stderr, "Failed to write to client");
             }
         }else{
@@ -180,11 +197,15 @@ void process(char *input, node **arr, int connfd){
             free(curr);
             
             // write back to client
-            if(write(connfd, "DELETED\n", sizeof("DELETED\n"))==-1){
+            if(write(connfd, "DELETED\n", strlen("DELETED\n"))==-1){
                 fprintf(stderr, "Failed to write to client");
             }
         }
         
+    }else{
+        if(write(connfd, "INVALID TOKEN\n", strlen("INVALID TOKEN\n"))==-1){
+            fprintf(stderr, "Failed to write to client");
+        }
     }
 
 }
