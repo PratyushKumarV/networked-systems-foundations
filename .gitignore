@@ -7,8 +7,10 @@
 02-concurrent-echo-server/server
 
 # 03-simple-kv-store
-03-simple-kv-store/client
 03-simple-kv-store/server
+
+# 04-static-file-http-server
+04-static-file-http-server/server
 
 # Compiled object files
 *.o
