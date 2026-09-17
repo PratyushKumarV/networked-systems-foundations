@@ -74,7 +74,7 @@ int main(){
         return 1;
     }
 
-    // Keep accpeting new client connections (sequentially, one client connection after another)
+    // Keep accepting new client connections (sequentially, one client connection after another)
     while(1){
         // Kernel populates client_addr and updates client_len upon accepting connection
         socklen_t client_len=sizeof(client_addr);   

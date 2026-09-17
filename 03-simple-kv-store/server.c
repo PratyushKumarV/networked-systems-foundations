@@ -66,7 +66,7 @@ int main(){
         int connfd;
         socklen_t client_len=sizeof(client_addr);
         if((connfd=accept(sockfd, (struct sockaddr*)&client_addr, &client_len))==-1){
-            fprintf(stderr, "Failed to accept connect");
+            fprintf(stderr, "Failed to accept connection");
             continue;
         }
 
@@ -141,7 +141,7 @@ void process(char *input, node **arr, int connfd){
             while(strcmp(curr->key, key)!=0 && curr->next!=NULL){
                 curr=curr->next;
             }
-            if(strcmp(curr->key, key)==0){
+            if(strcmp(curr->key, key)==0){ // key already exists
                 free(curr->value);
                 curr->value=new->value;
                 free(new->key);
@@ -171,7 +171,7 @@ void process(char *input, node **arr, int connfd){
             // write back to client
             char buff[1024];
             int len=snprintf(buff, sizeof(buff), "VALUE %s\n", curr->value); // used to write a formatted string to a buffer (up to sizeof(buff)-1, one char reserved for '\0'), returns the length of the formatted string (excluding '\0')
-            if(write(connfd, buff, len)==-1){ // writes back only the length of the formatted string, not the entire buffer.
+            if(write(connfd, buff, len)==-1){ // writes back only the length of the formatted string, not the entire buffer (without including '\0').
                 fprintf(stderr, "Failed to write to client");
             }
         }
