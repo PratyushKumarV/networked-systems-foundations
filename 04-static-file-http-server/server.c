@@ -48,8 +48,30 @@ int main(){
         }
 
         ssize_t  bytes_read;
-        char buff[1024];
+        char buff[4096];
+        char *method, *path, *version;
+        method=(char*)malloc(16);
+        path=(char*)malloc(1024);
+        version=(char*)malloc(16);
+
         while((bytes_read=read(connfd, buff, sizeof(buff)))>0){
+            for(int i=0;i<bytes_read;i++){
+                printf("%c", buff[i]);
+            }
+
+            // structure of a HTTP 1.0 request
+            // <METHOD> <REQUEST-URI> HTTP/1.0\r\n
+            // <Header-Name>: <Header-Value>\r\n
+            // <Header-Name>: <Header-Value>\r\n
+            // \r\n
+            // [Optional Entity Body]
+
+            sscanf(buff, "%s %s %s\r\n", method, path, version);
+            printf("Method: %s\n", method);
+            printf("Path: %s\n", path);
+            printf("Version: %s\n", version);
+        
+
             if(write(connfd, buff, bytes_read)==-1){
                 fprintf(stderr, "Failed to write to client\n");
                 return 1;
