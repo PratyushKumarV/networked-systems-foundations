@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 
 const int PORT=8080;
@@ -49,9 +51,10 @@ int main(){
 
         ssize_t  bytes_read;
         char buff[4096];
-        char *method, *path, *version;
+        char *method, *path, *version, *fspath;
         method=(char*)malloc(16);
         path=(char*)malloc(1024);
+        fspath=(char*)malloc(1031); // file system path
         version=(char*)malloc(16);
 
         while((bytes_read=read(connfd, buff, sizeof(buff)))>0){
@@ -68,9 +71,18 @@ int main(){
 
             sscanf(buff, "%s %s %s\r\n", method, path, version);
             printf("Method: %s\n", method);
-            printf("Path: %s\n", path);
+            printf("HTTP Path: %s\n", path);
             printf("Version: %s\n", version);
         
+            snprintf(fspath, 1031, "./www%s", path);
+            printf("Filesystem path: %s\n", fspath);
+
+            int fd;
+            if((fd=open(fspath, O_RDONLY))==-1){
+                fprintf(stderr, "Failed to open the file fd: %d\n", fd);
+                return 1;
+            }
+            printf("fd: %d\n", fd);
 
             if(write(connfd, buff, bytes_read)==-1){
                 fprintf(stderr, "Failed to write to client\n");
