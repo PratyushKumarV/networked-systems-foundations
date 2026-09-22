@@ -84,10 +84,16 @@ int main(){
             }
             printf("fd: %d\n", fd);
 
-            if(write(connfd, buff, bytes_read)==-1){
-                fprintf(stderr, "Failed to write to client\n");
-                return 1;
+            ssize_t bytes_read;
+            char buffer[1024];
+            while((bytes_read=read(fd, buffer, sizeof(buffer)))>0){
+                write(STDOUT_FILENO, buffer, bytes_read);
             }
+
+            // if(write(connfd, buff, bytes_read)==-1){
+            //     fprintf(stderr, "Failed to write to client\n");
+            //     return 1;
+            // }
         }
 
     }
